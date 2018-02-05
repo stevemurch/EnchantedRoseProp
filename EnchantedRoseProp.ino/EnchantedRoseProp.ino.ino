@@ -3,17 +3,16 @@
 #include <boards.h>
 #include <RBL_nRF8001.h>
 #include "Boards.h"
-#include <Servo.h>
+#include <Adafruit_TiCoServo.h>
 
+#include <Adafruit_NeoPixel.h>
+#ifdef __AVR__
+   #include <avr/power.h>
+#endif
 
-// include <Adafruit_NeoPixel.h>
-// ifdef __AVR__
-//  include <avr/power.h>
-// endif
+#define NEOPIXEL_PIN  12
 
-// define NEOPIXEL_PIN  7
-
-// Adafruit_NeoPixel strip = Adafruit_NeoPixel(60, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
+ Adafruit_NeoPixel strip = Adafruit_NeoPixel(60, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
 
 // BOARD SETUP
 
@@ -21,16 +20,13 @@
 // SERVO PINS:  2,3,4,5 -- THIS IS HARDCODED IN THE PROGRAM
 // servos WILL NOT WORK on 0, 1 pins
 
-
-
 #define PROTOCOL_MAJOR_VERSION   0 //
 #define PROTOCOL_MINOR_VERSION   0 //
 #define PROTOCOL_BUGFIX_VERSION  2 // bugfix
 
-
 //Servo   servo[4];               // the servo objects
 
-Servo myservo;
+Adafruit_TiCoServo myservo;
 int pos = 0;
 
 byte    pin_servo[4];           // holds the set rotation value of the servo
@@ -44,9 +40,12 @@ void setup() {
   Serial.println("Enchanted Rose Prop");
 
 // neopixel
-//  strip.begin();
-//  strip.setBrightness(64);
-//  strip.show(); // Initialize all pixels to 'off'
+  strip.begin();
+  strip.setBrightness(10);
+  strip.show(); // Initialize all pixels to 'off'
+
+  doNeoPixelColor();
+
 
   /* Default all to digital input */
 
@@ -72,8 +71,8 @@ void setup() {
 
 //moveServo(2,0);
 //moveServo(3,0);
-//moveServo(4,0);
 //moveServo(5,0);
+//moveServo(6,0);
 
 
 /*
@@ -151,20 +150,20 @@ void doNeoPixelOff()
 {
   
 
-//  colorWipe(strip.Color(0, 0, 0), 15); // Off
+  colorWipe(strip.Color(0, 0, 0), 15); // Off
 }
 
 void doNeoPixelColor()
 {
-//  colorWipe(strip.Color(0, 255, 0), 5); // Green
-//  colorWipe(strip.Color(255, 0, 0), 5); // Red
-//  colorWipe(strip.Color(0, 0, 255), 5); // Blue
+  colorWipe(strip.Color(0, 255, 0), 5); // Green
+  colorWipe(strip.Color(255, 0, 0), 5); // Red
+  colorWipe(strip.Color(0, 0, 255), 5); // Blue
 
-//  doNeoPixelOff();
+  doNeoPixelOff();
 }
 
 // Fill the dots one after the other with a color
-/*
+
 void colorWipe(uint32_t c, uint8_t wait) {
   for(uint16_t i=0; i<strip.numPixels(); i++) {
     strip.setPixelColor(i, c);
@@ -172,7 +171,7 @@ void colorWipe(uint32_t c, uint8_t wait) {
     delay(wait);
   }
 }
-*/
+
 
 void resetProp() {
   // turn off light
@@ -390,8 +389,8 @@ while(ble_available())
         Serial.println("RESET PROP");
         moveServo(2,0);
         moveServo(3,0);
-        moveServo(4,0);
         moveServo(5,0);
+        moveServo(6,0);
         
       }
         
@@ -406,7 +405,7 @@ while(ble_available())
 
           
 
-          if ((pin!=2) && (pin!=3) && (pin!=4) && (pin != 5) && (pin!=7))
+          if ((pin!=2) && (pin!=3) && (pin!=5) && (pin != 6) && (pin!=7))
           {
             Serial.println("Invalid pin value.");
             break;
