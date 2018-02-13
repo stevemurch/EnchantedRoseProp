@@ -12,6 +12,8 @@
 
 #define NEOPIXEL_PIN  12
 
+#define ACCENT_LIGHTS_PIN 9
+
  Adafruit_NeoPixel strip = Adafruit_NeoPixel(60, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
 
 // BOARD SETUP
@@ -29,6 +31,10 @@
 Adafruit_TiCoServo myservo;
 int pos = 0;
 
+bool accentLightsPulsing = false;
+bool accentLightsIncreaseOnPulse = false;
+int accentLightValue = 0;
+
 byte    pin_servo[4];           // holds the set rotation value of the servo
 
 static byte buf_len = 0;
@@ -39,90 +45,27 @@ void setup() {
   Serial.begin(57600);
   Serial.println("Enchanted Rose Prop");
 
-// neopixel
+  // neopixel
   strip.begin();
   strip.setBrightness(10);
   strip.show(); // Initialize all pixels to 'off'
 
+
+
   doNeoPixelColor();
 
+  // accent lights off
+  pinMode(ACCENT_LIGHTS_PIN, OUTPUT);
+  doAccentLightsOff();
+  
 
   /* Default all to digital input */
-
-
-  /*
-  for (int pin = 0; pin < TOTAL_PINS; pin++)
-  {
-    // Set pin to input with internal pull up
-    pinMode(pin, INPUT);
-    digitalWrite(pin, HIGH);
-
-    // Save pin mode and state
-    //pin_mode[pin] = INPUT;
-    //pin_state[pin] = LOW;
-  }
-  */
-
-
-  
-  
-  // test servo
- 
-
-//moveServo(2,0);
-//moveServo(3,0);
-//moveServo(5,0);
-//moveServo(6,0);
-
-
-/*
-moveServoTest(4); // 2 and 3 work, 4 and 5 work
-moveServoTest(5);
-*/
-
-  /*
-   for(int pin = 0; pin<1; pin++)
-   {
-      if (servo[pin].attached())
-      {
-        servo[pin].detach();
-      }
-      servo[pin].attach(pin);
-   }
-   */
-
- 
-
-
-/*
-  int pos = 0;
-  
-   for (pos = -60; pos <= 180; pos += 1) { // goes from 0 degrees to 180 degrees
-    // in steps of 1 degree
-    Serial.println(pos);
-    servo[0].write(pos);              // tell servo to go to position in variable 'pos'
-    delay(1000);                       // waits 15ms for the servo to reach the position
-  }
-  delay(3000);
-  for (pos = 180; pos >= -60; pos -= 1) { // goes from 180 degrees to 0 degrees
-    Serial.println(pos);
-    servo[0].write(pos);              // tell servo to go to position in variable 'pos'
-    delay(1000);                       // waits 15ms for the servo to reach the position
-  }
-  */
-
-  
-  
-
-
   
   Serial.println("Starting Bluetooth");
   ble_begin();
 
   byte buf[] = {'O','n','l','i','n','e'};         
   ble_write_string(buf,6 );
-  
-
   
 }
 
@@ -143,6 +86,51 @@ void moveServoTest(int servoPin)
 
   myservo.detach();
   
+}
+
+void doAccentLightsOff()
+{
+  analogWrite(ACCENT_LIGHTS_PIN, 0); 
+  accentLightsPulsing = false;
+}
+
+void doAccentLightsOn()
+{
+  accentLightsPulsing = true;
+}
+
+
+void handleAccentLightPulseIfOn()
+{
+   if (accentLightsPulsing)
+   {
+      if (accentLightsIncreaseOnPulse) // increase
+      {
+          if (accentLightValue<255)
+          {
+            accentLightValue = accentLightValue + 1;
+          } 
+          else 
+          {
+            accentLightsIncreaseOnPulse = false;
+            accentLightValue = accentLightValue - 1;
+          }
+      } else // decrease
+      {
+         if (accentLightValue > 1)
+         {
+           accentLightValue = accentLightValue - 1;
+         } else 
+         {
+           accentLightValue = accentLightValue + 1;
+           accentLightsIncreaseOnPulse = true;
+         }
+        
+      }
+
+      analogWrite(ACCENT_LIGHTS_PIN, accentLightValue);
+      
+   }
 }
 
 
@@ -336,6 +324,8 @@ void sendCustomData(uint8_t *buf, uint8_t len)
 
 
 
+
+
 // LOOP
 // Listen to Bluetooth.
 // When receiving a command, process it.
@@ -343,11 +333,10 @@ void sendCustomData(uint8_t *buf, uint8_t len)
 byte queryDone = false;
 
 void loop() {
-
-
-
+  
+ handleAccentLightPulseIfOn(); // do pulse if set on
  
-while(ble_available())
+ while(ble_available())
   {
     byte cmd;
     cmd = ble_read();
@@ -355,7 +344,7 @@ while(ble_available())
     Serial.println(cmd);
     Serial.println("[END OF COMMAND]");
 
-// Parse data here
+    // Parse data here
     switch (cmd)
     {
 
@@ -371,7 +360,6 @@ while(ble_available())
         {
           byte pin = ble_read();
           byte state = ble_read();
-          
           moveServoToPosition(pin, state);
         }
         break;
@@ -403,8 +391,6 @@ while(ble_available())
           Serial.println("pin is ");
           Serial.println(pin);
 
-          
-
           if ((pin!=2) && (pin!=3) && (pin!=5) && (pin != 6) && (pin!=7))
           {
             Serial.println("Invalid pin value.");
@@ -420,9 +406,6 @@ while(ble_available())
           {
               moveServo(pin, state);
           }
-          
-          //digitalWrite(pin, state);
-          //reportPinDigitalData(pin);
                    
         }
         break;
@@ -450,10 +433,7 @@ while(ble_available())
     buf_len = 0;
     
     return; // only do this task in this loop
-
-
-
-    
+   
   }
 
   // process text data
@@ -481,22 +461,8 @@ while(ble_available())
     
   if (queryDone) // only report data after the query state
   { 
-    //byte input_data_pending = reportDigitalInput();  
-    /*
-    if (input_data_pending)
-    {
-      ble_do_events();
-      buf_len = 0;
-      
-      return; // only do this task in this loop
-    }
-    */
-  
-    //reportPinAnalogData();
-    
     ble_do_events();
     buf_len = 0;
-    
     return;  
   }
     
