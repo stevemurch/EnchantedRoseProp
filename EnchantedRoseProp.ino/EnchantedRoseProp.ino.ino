@@ -51,7 +51,6 @@ void setup() {
   strip.show(); // Initialize all pixels to 'off'
 
 
-
   doNeoPixelColor();
 
   // accent lights off
@@ -150,6 +149,11 @@ void doNeoPixelColor()
   doNeoPixelOff();
 }
 
+void doNeoPixelColorRGB(byte r, byte g, byte b)
+{
+  colorWipe(strip.Color(r, g, b), 5); // Green
+}
+
 // Fill the dots one after the other with a color
 
 void colorWipe(uint32_t c, uint8_t wait) {
@@ -163,9 +167,15 @@ void colorWipe(uint32_t c, uint8_t wait) {
 
 void resetProp() {
   // turn off light
+  doNeoPixelOff();
+  
   Serial.println("Resetting prop");
 
-
+  moveServo(2, 0);
+  moveServo(3, 0);
+  moveServo(5, 0);
+  moveServo(6, 0);
+  
   
   // reset all servos
 }
@@ -334,7 +344,7 @@ byte queryDone = false;
 
 void loop() {
   
- handleAccentLightPulseIfOn(); // do pulse if set on
+ //handleAccentLightPulseIfOn(); // do pulse if set on
  
  while(ble_available())
   {
@@ -348,11 +358,31 @@ void loop() {
     switch (cmd)
     {
 
+      case 'C': // set light to a color
+      {
+        byte r = ble_read();
+        byte g = ble_read();
+        byte b = ble_read();
+        doNeoPixelColorRGB(r, g, b);
+        
+        Serial.println("Set color to RGB");
+        Serial.println(r);
+        Serial.println(g);
+        Serial.println(b);
+        
+        break;
+      }
+
       case 'H': // SET light to 0 or 1 or 2 
       {
          byte style = ble_read();
          Serial.print("Set light to value: ");
          Serial.println(style);
+         if (style == 0)
+         {
+           doNeoPixelOff();
+         }
+         
          break;
       }
 
