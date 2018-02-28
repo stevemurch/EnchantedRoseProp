@@ -12,9 +12,9 @@
 
 #define NEOPIXEL_PIN  12
 
-#define ACCENT_LIGHTS_PIN 9
+#define ACCENT_LIGHTS_PIN 10
 
- Adafruit_NeoPixel strip = Adafruit_NeoPixel(60, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
+ Adafruit_NeoPixel strip = Adafruit_NeoPixel(45, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
 
 // BOARD SETUP
 
@@ -30,10 +30,7 @@
 
 Adafruit_TiCoServo myservo;
 int pos = 0;
-
-bool accentLightsPulsing = false;
-bool accentLightsIncreaseOnPulse = false;
-int accentLightValue = 0;
+bool accentLightsOn = false;
 
 byte    pin_servo[4];           // holds the set rotation value of the servo
 
@@ -45,6 +42,8 @@ void setup() {
   Serial.begin(57600);
   Serial.println("Enchanted Rose Prop");
 
+  doAccentLightsOff();
+
   // neopixel
   strip.begin();
   strip.setBrightness(10);
@@ -55,7 +54,7 @@ void setup() {
 
   // accent lights off
   pinMode(ACCENT_LIGHTS_PIN, OUTPUT);
-  doAccentLightsOff();
+  
   
 
   /* Default all to digital input */
@@ -89,47 +88,55 @@ void moveServoTest(int servoPin)
 
 void doAccentLightsOff()
 {
-  analogWrite(ACCENT_LIGHTS_PIN, 0); 
-  accentLightsPulsing = false;
+  digitalWrite(ACCENT_LIGHTS_PIN, LOW); 
+  accentLightsOn = false;
 }
 
 void doAccentLightsOn()
 {
-  accentLightsPulsing = true;
+  digitalWrite(ACCENT_LIGHTS_PIN, HIGH);
+  accentLightsOn = true;
+
 }
 
+void rainbow(uint8_t wait) {
+  uint16_t i, j;
 
-void handleAccentLightPulseIfOn()
-{
-   if (accentLightsPulsing)
-   {
-      if (accentLightsIncreaseOnPulse) // increase
-      {
-          if (accentLightValue<255)
-          {
-            accentLightValue = accentLightValue + 1;
-          } 
-          else 
-          {
-            accentLightsIncreaseOnPulse = false;
-            accentLightValue = accentLightValue - 1;
-          }
-      } else // decrease
-      {
-         if (accentLightValue > 1)
-         {
-           accentLightValue = accentLightValue - 1;
-         } else 
-         {
-           accentLightValue = accentLightValue + 1;
-           accentLightsIncreaseOnPulse = true;
-         }
-        
-      }
+  for(j=0; j<256; j++) {
+    for(i=0; i<strip.numPixels(); i++) {
+      strip.setPixelColor(i, Wheel((i+j) & 255));
+    }
+    strip.show();
+    delay(wait);
+  }
+}
 
-      analogWrite(ACCENT_LIGHTS_PIN, accentLightValue);
-      
-   }
+// Slightly different, this makes the rainbow equally distributed throughout
+void rainbowCycle(uint8_t wait) {
+  uint16_t i, j;
+
+  for(j=0; j<256*5; j++) { // 5 cycles of all colors on wheel
+    for(i=0; i< strip.numPixels(); i++) {
+      strip.setPixelColor(i, Wheel(((i * 256 / strip.numPixels()) + j) & 255));
+    }
+    strip.show();
+    delay(wait);
+  }
+}
+
+// Input a value 0 to 255 to get a color value.
+// The colours are a transition r - g - b - back to r.
+uint32_t Wheel(byte WheelPos) {
+  WheelPos = 255 - WheelPos;
+  if(WheelPos < 85) {
+    return strip.Color(255 - WheelPos * 3, 0, WheelPos * 3);
+  }
+  if(WheelPos < 170) {
+    WheelPos -= 85;
+    return strip.Color(0, WheelPos * 3, 255 - WheelPos * 3);
+  }
+  WheelPos -= 170;
+  return strip.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
 }
 
 
@@ -344,7 +351,7 @@ byte queryDone = false;
 
 void loop() {
   
- //handleAccentLightPulseIfOn(); // do pulse if set on
+
  
  while(ble_available())
   {
@@ -358,7 +365,7 @@ void loop() {
     switch (cmd)
     {
 
-      case 'C': // set light to a color
+      case 'C': // set Neopixel ring light to a color
       {
         byte r = ble_read();
         byte g = ble_read();
@@ -369,10 +376,30 @@ void loop() {
         Serial.println(r);
         Serial.println(g);
         Serial.println(b);
-        
+       
         break;
       }
 
+      case 'X': // turn off accent light
+      {
+         doAccentLightsOff();
+         break;
+      }
+
+      case 'Y': // turn on accent light 
+      {
+         doAccentLightsOn();
+         break;
+      }
+
+      case 'W': // rainbow light 
+      {
+         rainbow(20);
+         break;
+      }
+      
+
+     
       case 'H': // SET light to 0 or 1 or 2 
       {
          byte style = ble_read();
@@ -381,7 +408,8 @@ void loop() {
          if (style == 0)
          {
            doNeoPixelOff();
-         }
+         } 
+         
          
          break;
       }
@@ -409,6 +437,9 @@ void loop() {
         moveServo(3,0);
         moveServo(5,0);
         moveServo(6,0);
+
+        doAccentLightsOff();
+        doNeoPixelOff();
         
       }
         
