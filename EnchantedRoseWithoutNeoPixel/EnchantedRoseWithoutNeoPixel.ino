@@ -3,17 +3,11 @@
 #include <boards.h>
 #include <RBL_nRF8001.h>
 #include "Boards.h"
-#include <Adafruit_TiCoServo.h>
-#include <Adafruit_NeoPixel.h>
+#include "Servo.h"
 
-#ifdef __AVR__
-   #include <avr/power.h>
-#endif
 
-#define NEOPIXEL_PIN 44
-#define ACCENT_LIGHTS_PIN 6
+#define ACCENT_LIGHTS_PIN 10
 
- Adafruit_NeoPixel strip = Adafruit_NeoPixel(45, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
 
 // BOARD SETUP
 
@@ -27,7 +21,7 @@
 
 //Servo   servo[4];               // the servo objects
 
-Adafruit_TiCoServo myservo;
+Servo myservo;
 int pos = 0;
 bool accentLightsOn = false;
 
@@ -41,32 +35,18 @@ void setup() {
   Serial.begin(57600);
   Serial.println("Enchanted Rose Prop");
 
+  //doAccentLightsOff();
+
+
+  
+
   /* Default all to digital input */
   
   Serial.println("Starting Bluetooth");
-  ble_set_pins(12, 11);
   ble_begin();
 
   byte buf[] = {'O','n','l','i','n','e'};         
   ble_write_string(buf,6 );
-  
-
-  doAccentLightsOff();
-
-  // neopixel
-  strip.begin();
-  strip.setBrightness(10);
-  strip.show(); // Initialize all pixels to 'off'
-
-
-  doNeoPixelColor();
-
-  // accent lights off
-  pinMode(ACCENT_LIGHTS_PIN, OUTPUT);
-  
-  
-
-  
   
 }
 
@@ -102,89 +82,28 @@ void doAccentLightsOn()
 
 }
 
-void rainbow(uint8_t wait) {
-  uint16_t i, j;
-
-  for(j=0; j<256; j++) {
-    for(i=0; i<strip.numPixels(); i++) {
-      strip.setPixelColor(i, Wheel((i+j) & 255));
-    }
-    strip.show();
-    delay(wait);
-  }
-}
-
-// Slightly different, this makes the rainbow equally distributed throughout
-void rainbowCycle(uint8_t wait) {
-  uint16_t i, j;
-
-  for(j=0; j<256*5; j++) { // 5 cycles of all colors on wheel
-    for(i=0; i< strip.numPixels(); i++) {
-      strip.setPixelColor(i, Wheel(((i * 256 / strip.numPixels()) + j) & 255));
-    }
-    strip.show();
-    delay(wait);
-  }
-}
-
-// Input a value 0 to 255 to get a color value.
-// The colours are a transition r - g - b - back to r.
-uint32_t Wheel(byte WheelPos) {
-  WheelPos = 255 - WheelPos;
-  if(WheelPos < 85) {
-    return strip.Color(255 - WheelPos * 3, 0, WheelPos * 3);
-  }
-  if(WheelPos < 170) {
-    WheelPos -= 85;
-    return strip.Color(0, WheelPos * 3, 255 - WheelPos * 3);
-  }
-  WheelPos -= 170;
-  return strip.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
-}
 
 
-void doNeoPixelOff()
-{
-  
 
-  colorWipe(strip.Color(0, 0, 0), 15); // Off
-}
 
-void doNeoPixelColor()
-{
-  colorWipe(strip.Color(0, 255, 0), 5); // Green
-  colorWipe(strip.Color(255, 0, 0), 5); // Red
-  colorWipe(strip.Color(0, 0, 255), 5); // Blue
 
-  doNeoPixelOff();
-}
 
-void doNeoPixelColorRGB(byte r, byte g, byte b)
-{
-  colorWipe(strip.Color(r, g, b), 5); // Green
-}
 
-// Fill the dots one after the other with a color
 
-void colorWipe(uint32_t c, uint8_t wait) {
-  for(uint16_t i=0; i<strip.numPixels(); i++) {
-    strip.setPixelColor(i, c);
-    delay(wait);
-  }
-      strip.show();
-}
+
+
 
 
 void resetProp() {
   // turn off light
-  doNeoPixelOff();
+  //doNeoPixelOff();
   
   Serial.println("Resetting prop");
 
   moveServo(2, 0);
   moveServo(3, 0);
   moveServo(5, 0);
-  moveServo(11, 0);
+  moveServo(6, 0);
   
   
   // reset all servos
@@ -250,7 +169,6 @@ void moveServo(int servoPin, int drop1reset0)
 void moveServoToPosition(int servoPin, int toPosition)
 {
 
-if (servoPin==6) {servoPin = 11;}
   Serial.println("Move servo to [servoPin, toPosition]");
   Serial.println(servoPin);
   Serial.println(toPosition);
@@ -274,7 +192,7 @@ if (servoPin==6) {servoPin = 11;}
   for (pos = startingPos; pos >=toPosition; pos -= 1) { // goes from 0 degrees to 180 degrees
     // in steps of 1 degree
     myservo.write(pos);              // tell servo to go to position in variable 'pos'
-    delay(8);                       // waits 15ms for the servo to reach the position
+    delay(10);                       // waits 15ms for the servo to reach the position
   }
   myservo.detach();
   } else 
@@ -343,31 +261,7 @@ void sendCustomData(uint8_t *buf, uint8_t len)
 }
 
 
-void dropPetal (int petal)
-{
-  int pinNo = 2;
-   switch(petal)
-   {
-     case 1:
-     pinNo = 2;
-     break;
-     case 2:
-     pinNo = 3;
-     break;
-     case 3:
-     pinNo = 5;
-     break;
-     case 4:
-     pinNo = 6;
-     break;
-   }
 
-  moveServoToPosition(pinNo, 180);
-  delay(1000);
-  moveServoToPosition(pinNo, 0);
- 
-  
-}
 
 
 
@@ -379,6 +273,9 @@ byte queryDone = false;
 
 void loop() {
 
+ //Serial.print("*");
+
+ 
  while(ble_available())
   {
     byte cmd;
@@ -391,29 +288,12 @@ void loop() {
     switch (cmd)
     {
 
-      case 73:
-      Serial.println("DROP 1");
-      dropPetal(1);
-       break;
-      case 80:
-      Serial.println("DROP 2");
-      dropPetal(2);
-      break;
-      case 81:
-      Serial.println("DROP 3");
-      dropPetal(3);
-      break;
-      case 82:
-      Serial.println("DROP 4");
-      dropPetal(4);
-      break;
-
       case 'C': // set Neopixel ring light to a color
       {
         byte r = ble_read();
         byte g = ble_read();
         byte b = ble_read();
-        doNeoPixelColorRGB(r, g, b);
+        //doNeoPixelColorRGB(r, g, b);
         
         Serial.println("Set color to RGB");
         Serial.println(r);
@@ -437,7 +317,7 @@ void loop() {
 
       case 'W': // rainbow light 
       {
-         rainbow(20);
+         //rainbow(20);
          break;
       }
       
@@ -450,7 +330,7 @@ void loop() {
          Serial.println(style);
          if (style == 0)
          {
-           doNeoPixelOff();
+           //doNeoPixelOff();
          } 
          
          
@@ -481,8 +361,7 @@ void loop() {
         moveServo(5,0);
         moveServo(6,0);
 
-        doAccentLightsOff();
-        doNeoPixelOff();
+ 
         
       }
         
